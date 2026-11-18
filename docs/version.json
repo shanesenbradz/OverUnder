@@ -1,15 +1,15 @@
 {
   "full": {
-    "version": "1.1",
-    "code": 2,
-    "apk": "https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/release/Brads_Underover_1.1.apk",
+    "version": "1.1.1",
+    "code": 3,
+    "apk": "https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/release/Brads_Underover_1.1.1.apk",
     "page": "https://shanesenbradz.github.io/OverUnder/download/",
     "size": 1348915,
-    "sha256": "4ee9930e70a8a6caaab6df663571a48e35df4e0367b245d8cd069afc77e5a2de",
+    "sha256": "8abd0b00afc761c89af463c20b6d73828903bf4d1722b38911209b1443fbad55",
     "notes": [
-      "One screen by default, like Bullpup: the top screen in Bullpup's screen area, SWAP brings the touch screen up in its place. Both screens (stacked or side by side) are still in Look, Screens",
-      "Smoother: frames are paced to the screen instead of run in bursts, and the sound adjusts by up to half a percent to stay in step",
-      "Faster: 3D is drawn on a second CPU core, and RAM reads skip the address decoder"
+      "Installs on phones whose installer rejected 1.1: the APK now pads its files the way Android Studio builds do",
+      "One screen by default, like Bullpup, with SWAP for the touch screen. Both screens are still in Look, Screens",
+      "Smoother frame pacing and 3D on a second CPU core"
     ]
   }
 }

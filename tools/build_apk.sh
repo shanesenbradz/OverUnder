@@ -6,7 +6,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 TC=.toolchain; B=build
-VC=${VC:-2}; VN=${VN:-1.1}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
+VC=${VC:-3}; VN=${VN:-1.1.1}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
 TARGET=${TARGET:-36}
 if [ ! -d $TC/minapk ]; then
   mkdir -p $TC && (cd $TC && npm pack @drxiaozhi/minapk@0.5.1 aaptjs3@2.0.2 >/dev/null)
@@ -27,7 +27,9 @@ java -jar $T/ecj-3.45.0.jar -8 -nowarn -cp $AJ -d $B/classes $(find android/src 
 java -cp $T/d8.jar com.android.tools.r8.D8 --release --min-api 24 --lib $AJ --output $B/dex $(find $B/classes -name '*.class')
 cp $B/base.apk $B/unaligned.apk && (cd $B/dex && zip -q -X ../unaligned.apk classes.dex)
 python3 -m pip show repro-apk >/dev/null 2>&1 || python3 -m pip install -q repro-apk
-python3 -m repro_apk.zipalign 4 $B/unaligned.apk $B/aligned.apk
+# alignment padding as a proper ZIP extra field (0xD935, what the Android Gradle plugin writes),
+# not loose zero bytes, so strict ZIP parsers on newer phones accept every entry
+python3 -m repro_apk.zipalign --pad-like-apksigner --replace 4 $B/unaligned.apk $B/aligned.apk
 if [ -z "${KEYSTORE:-}" ]; then
   KEYSTORE=keys/underover.jks; KS_PASS=${KS_PASS:-changeit}; KS_ALIAS=${KS_ALIAS:-underover}
   [ -f $KEYSTORE ] || { mkdir -p keys; keytool -genkeypair -keystore $KEYSTORE -storepass $KS_PASS -keypass $KS_PASS -alias $KS_ALIAS -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Brad's Underover"; }

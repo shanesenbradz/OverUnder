@@ -3,7 +3,7 @@
 and copy it into docs/ for GitHub Pages."""
 import base64, glob, os, pathlib, shutil
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-VERSION = os.environ.get('VN', '1.1')
+VERSION = os.environ.get('VN', '1.1.1')
 W = ROOT / 'web'
 shell = (W / 'shell.html').read_text()
 css = (W / 'app.css').read_text()

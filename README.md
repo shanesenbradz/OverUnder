@@ -17,7 +17,7 @@ On your phone, open the **[download page](https://shanesenbradz.github.io/OverUn
 
 It runs on Android 7 and up and installs next to Brad's Bullpup (it's a separate app, com.bradz.underover). It updates itself from System, Updates.
 
-You can also skip the install and [run it in the browser](https://shanesenbradz.github.io/OverUnder/). It works offline after the first visit. release/Brads_Underover_1.1.html is the same thing as one file you can keep on a phone or PC.
+You can also skip the install and [run it in the browser](https://shanesenbradz.github.io/OverUnder/). It works offline after the first visit. release/Brads_Underover_1.1.1.html is the same thing as one file you can keep on a phone or PC.
 
 ## The two screens
 
