@@ -32,5 +32,6 @@ if [ -z "${KEYSTORE:-}" ]; then
   KEYSTORE=keys/underover.jks; KS_PASS=${KS_PASS:-changeit}; KS_ALIAS=${KS_ALIAS:-underover}
   [ -f $KEYSTORE ] || { mkdir -p keys; keytool -genkeypair -keystore $KEYSTORE -storepass $KS_PASS -keypass $KS_PASS -alias $KS_ALIAS -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Brad's Underover"; }
 fi
-java -jar $T/apksigner.jar sign --ks "$KEYSTORE" --ks-pass pass:$KS_PASS --ks-key-alias $KS_ALIAS --key-pass pass:$KS_PASS --min-sdk-version 24 --out dist/$NAME.apk $B/aligned.apk
+# v1 (JAR) signing on top of v2/v3: Android 7+ only needs v2, but some file managers and OEM installers still read the v1 files
+java -jar $T/apksigner.jar sign --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --ks "$KEYSTORE" --ks-pass pass:$KS_PASS --ks-key-alias $KS_ALIAS --key-pass pass:$KS_PASS --min-sdk-version 24 --out dist/$NAME.apk $B/aligned.apk
 java -jar $T/apksigner.jar verify dist/$NAME.apk && echo "dist/$NAME.apk is signed and ready"
