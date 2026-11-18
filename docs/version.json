@@ -1,0 +1,16 @@
+{
+  "full": {
+    "version": "1.0",
+    "code": 1,
+    "apk": "https://raw.githubusercontent.com/shanesenbradz/Brads-Underover/main/release/Brads_Underover_1.0.apk",
+    "page": "https://shanesenbradz.github.io/Brads-Underover/download/",
+    "size": 722227,
+    "sha256": "dd44847de9af568151908311068a4f657319d7e22fa71c0864462a7dcbabe3bc",
+    "notes": [
+      "First release: Nintendo DS games on the melonDS core, in Brad's Bullpup's controller and menus",
+      "Stacked, side by side or one screen at a time, with a SWAP button for the touch screen",
+      "Stylus on the touch screen, X and Y buttons, mic blow button, lid close",
+      "Action Replay DS cheats, RAM search, save states, rewind, fast forward"
+    ]
+  }
+}

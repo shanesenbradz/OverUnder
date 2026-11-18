@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="graphite">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Brad's Underover: a Nintendo DS emulator built on melonDS. Runs offline in the browser.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="pwa/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="pwa/icon-192.png">
+<title>Brad's Underover</title>
+<style>/*CSS*/</style>
+</head>
+<body>
+<div id="boot"><span class="mark">__GUN__</span><div class="brand"><span class="bname">Brad's Underover</span></div><div class="boot-msg">Loading core</div></div>
+
+<!-- LIBRARY -->
+<section id="library" class="view">
+  <header class="lib-head" id="libHead">
+    <button class="icon-btn" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.4-2.5a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.8 1.7 1l.4 2.6h4l.4-2.6c.6-.2 1.2-.6 1.7-1l2.5 1 2-3.5-2.3-1.6Z"/></svg></button>
+    <span class="center">Library</span>
+    <div class="lib-actions">
+      <button class="icon-btn" id="btnAdd" aria-label="Add games"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></button>
+    </div>
+  </header>
+  <div class="large-title"><h1>Library</h1><div class="brand"><span class="mark">__GUN__</span></div></div>
+  <div class="lib-tools">
+    <label class="search"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg><input id="search" type="search" placeholder="Search" autocomplete="off"></label>
+    <select id="sort" aria-label="Sort"><option value="recent">Recent</option><option value="name">Name</option><option value="added">Added</option><option value="time">Most played</option></select>
+  </div>
+  <div id="games" class="grid"></div>
+  <div id="empty" class="empty">
+    <div class="hero-gun">__GUN__</div>
+    <div class="shelf" id="shelf"></div>
+    <h2>Load your first cartridge</h2>
+    <p>Add DS games you've dumped from your own cartridges. Zipped files work too, and everything stays on this phone.</p>
+    <button class="btn primary" id="btnAdd2">Choose ROM files</button>
+    <p class="hint">.nds  .zip</p>
+  </div>
+  <footer class="lib-foot" id="libFoot"></footer>
+</section>
+
+<!-- PLAYER -->
+<section id="player" class="view hidden">
+  <div id="body"><div id="wall"></div><canvas id="vinyl"></canvas><div id="shade"></div><div class="save-leds" id="saveLeds" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="pill-led"><span class="led" id="plateLed"></span><svg viewBox="0 0 24 24"><path d="M12 3v8M6.3 7a8 8 0 1 0 11.4 0"/></svg></div><div class="grille"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="decal" id="decal"></div><div class="plate">__GUN__<span>BRAD'S UNDEROVER  ·  <span id="plateSN">SN 00000000</span></span></div></div>
+  <div id="amb"></div>
+  <div id="stage"><div id="screenWrap"><span class="led" id="bezLed"></span><canvas id="screen" width="256" height="384"></canvas></div><div id="logoStrip">__GUN__<span>Brad's Underover</span></div></div>
+  <div class="save-leds land" id="saveLedsL" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div id="hud"><span id="hudSpeed"></span><span id="hudFps"></span><span id="hudRec" class="hidden">REC</span></div>
+  <div id="overlay"></div>
+  <div id="editBar" class="hidden">
+    <div class="eb-row"><span id="ebName">Tap a control</span></div>
+    <label>Size <input type="range" id="ebSize" min="6" max="60" step="1"></label>
+    <label>Opacity <input type="range" id="ebOpacity" min="0.1" max="1" step="0.05"></label>
+    <div class="eb-row">
+      <button class="btn small" id="ebHide">Hide</button>
+      <button class="btn small" id="ebShowAll">Show hidden</button>
+      <button class="btn small" id="ebReset">Reset</button>
+      <button class="btn small primary" id="ebDone">Done</button>
+    </div>
+  </div>
+</section>
+
+<!-- MENU SHEET -->
+<div id="scrim" class="hidden"></div>
+<aside id="sheet" class="hidden" aria-label="Menu">
+  <div class="sheet-head">
+    <div><div class="sheet-title" id="sheetTitle">Menu</div><div class="sheet-sub" id="sheetSub"></div></div>
+    <button class="icon-btn" id="sheetClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4z"/></svg></button>
+  </div>
+  <label class="search sheet-search"><svg viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3Zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg><input id="menuSearch" type="search" placeholder="Search settings" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search settings"></label>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="sheet-body" id="sheetBody"></div>
+</aside>
+
+<div id="dlgWrap" class="hidden"><div id="dlg"></div></div>
+<div id="toasts"></div>
+<input type="file" id="fileIn" multiple hidden>
+
+<script>/*CORE_JS*/</script>
+<script>const LITE=__LITE__;const APP_VERSION="__VERSION__";const WASM_B64="__WASM__";const GUN_SVG='__GUNJS__';const SPRITES=__SPRITES__;</script>
+<script>/*APP_JS*/</script>
+<script>
+// On the web (GitHub Pages) a service worker keeps the app working offline after the first visit.
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.CalzoneAndroid) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

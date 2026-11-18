@@ -1,0 +1,116 @@
+diff --git a/src/AREngine.h b/src/AREngine.h
+index 7365c4f..5e1f7e5 100644
+--- a/src/AREngine.h
++++ b/src/AREngine.h
+@@ -31,9 +31,11 @@ public:
+     AREngine(melonDS::NDS& nds);
+ 
+     std::vector<ARCode> Cheats {};
++    // Bullpup: the frontend runs the cheats once per frame itself, so they also work in games
++    // (and homebrew) whose ARM7 never takes a VBlank interrupt
++    void RunCheats();
+ private:
+     friend class ARM;
+-    void RunCheats();
+     void RunCheat(const ARCode& arcode);
+ 
+     melonDS::NDS& NDS;
+diff --git a/src/ARM.cpp b/src/ARM.cpp
+index 3937a99..7a3d5ce 100644
+--- a/src/ARM.cpp
++++ b/src/ARM.cpp
+@@ -542,8 +542,7 @@ void ARM::TriggerIRQ()
+     // normally, those work by hijacking the ARM7 VBlank handler
+     if (Num == 1)
+     {
+-        if ((NDS.IF[1] & NDS.IE[1]) & (1<<IRQ_VBlank))
+-            NDS.AREngine.RunCheats();
++        // Bullpup runs cheats once per frame from the frontend instead (see AREngine.h)
+     }
+ }
+ 
+diff --git a/src/GPU.cpp b/src/GPU.cpp
+index b695ee9..26f1169 100644
+--- a/src/GPU.cpp
++++ b/src/GPU.cpp
+@@ -26,6 +26,8 @@
+ 
+ namespace melonDS
+ {
++bool SkipDraw2D = false, SkipRender3D = false;
++
+ using Platform::Log;
+ using Platform::LogLevel;
+ 
+@@ -1153,9 +1155,10 @@ void GPU::StartHBlank(u32 line) noexcept
+     {
+         // draw
+         // note: this should start 48 cycles after the scanline start
+-        if (line < 192)
++        bool skip = SkipDraw2D && !CaptureEnable;
++        if (line < 192 && !skip)
+             Rend->DrawScanline(line);
+-        if (line < 191)
++        if (line < 191 && !skip)
+             Rend->DrawSprites(line+1);
+ 
+         NDS.CheckDMAs(0, 0x02);
+diff --git a/src/GPU.h b/src/GPU.h
+index b0e1faf..5b08bdb 100644
+--- a/src/GPU.h
++++ b/src/GPU.h
+@@ -27,6 +27,9 @@
+ 
+ namespace melonDS
+ {
++// Bullpup frame skip: skip drawing the 2D layers / rendering 3D for frames nobody will see
++extern bool SkipDraw2D, SkipRender3D;
++
+ class GPU3D;
+ class ARMJIT;
+ 
+diff --git a/src/GPU3D_Soft.cpp b/src/GPU3D_Soft.cpp
+index e620270..1a93b4c 100644
+--- a/src/GPU3D_Soft.cpp
++++ b/src/GPU3D_Soft.cpp
+@@ -1753,6 +1753,11 @@ void SoftRenderer3D::RenderFrame()
+ 
+     FrameIdentical = !(textureChanged || texPalChanged) && GPU3D.RenderFrameIdentical;
+ 
++    // Bullpup frame skip: leave the 3D buffer alone when the next frame will not be shown
++    static bool skippedLast = false;
++    if (SkipRender3D && !GPU.CaptureEnable && !RenderThreadRunning.load(std::memory_order_relaxed)) { skippedLast = true; return; }
++    if (skippedLast) { FrameIdentical = false; skippedLast = false; }
++
+     if (RenderThreadRunning.load(std::memory_order_relaxed))
+     {
+         // "Render thread, you're up! Get moving."
+diff --git a/src/NDS.cpp b/src/NDS.cpp
+index cd88ec2..23371cc 100644
+--- a/src/NDS.cpp
++++ b/src/NDS.cpp
+@@ -648,7 +648,7 @@ bool NDS::DoSavestate(Savestate* file)
+         }
+     }
+ 
+-    file->VarArray(MainRAM, MainRAMMaxSize);
++    file->VarArray(MainRAM, ConsoleType == 1 ? MainRAMMaxSize : 0x400000);
+     file->VarArray(SharedWRAM, SharedWRAMSize);
+     file->VarArray(ARM7WRAM, ARM7WRAMSize);
+ 
+diff --git a/src/teakra/CMakeLists.txt b/src/teakra/CMakeLists.txt
+index c1615e0..7202e65 100644
+--- a/src/teakra/CMakeLists.txt
++++ b/src/teakra/CMakeLists.txt
+@@ -74,7 +74,11 @@ endif()
+ 
+ # Prefer the -pthread flag on Linux.
+ set(THREADS_PREFER_PTHREAD_FLAG ON)
++if(NOT EMSCRIPTEN)
+ find_package(Threads REQUIRED)
++else()
++add_library(Threads::Threads INTERFACE IMPORTED)
++endif()
+ 
+ enable_testing()
+ 
