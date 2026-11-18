@@ -6,14 +6,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- the DS microphone, only asked for if you switch it to the phone's mic -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.gamepad" android:required="false" />
     <application android:label="Brad\'s Underover" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme" android:hardwareAccelerated="true" android:allowBackup="true" android:largeHeap="true"
         android:isGame="true" android:appCategory="game" android:enableOnBackInvokedCallback="true">
-        <activity android:name="com.bradz.calzone.MainActivity" android:exported="true" android:launchMode="singleTask"
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density"
             android:screenOrientation="fullUser" android:windowSoftInputMode="adjustResize">
             <intent-filter>

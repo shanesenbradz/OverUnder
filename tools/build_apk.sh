@@ -6,7 +6,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 TC=.toolchain; B=build
-VC=${VC:-3}; VN=${VN:-1.1.1}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
+VC=${VC:-4}; VN=${VN:-1.1.2}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
 TARGET=${TARGET:-36}
 if [ ! -d $TC/minapk ]; then
   mkdir -p $TC && (cd $TC && npm pack @drxiaozhi/minapk@0.5.1 aaptjs3@2.0.2 >/dev/null)
@@ -32,7 +32,7 @@ python3 -m pip show repro-apk >/dev/null 2>&1 || python3 -m pip install -q repro
 python3 -m repro_apk.zipalign --pad-like-apksigner --replace 4 $B/unaligned.apk $B/aligned.apk
 if [ -z "${KEYSTORE:-}" ]; then
   KEYSTORE=keys/underover.jks; KS_PASS=${KS_PASS:-changeit}; KS_ALIAS=${KS_ALIAS:-underover}
-  [ -f $KEYSTORE ] || { mkdir -p keys; keytool -genkeypair -keystore $KEYSTORE -storepass $KS_PASS -keypass $KS_PASS -alias $KS_ALIAS -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Brad's Underover"; }
+  [ -f $KEYSTORE ] || { mkdir -p keys; keytool -genkeypair -keystore $KEYSTORE -storepass $KS_PASS -keypass $KS_PASS -alias $KS_ALIAS -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=Bradley Williams, O=Brad's Underover, C=JM"; }
 fi
 # v1 (JAR) signing on top of v2/v3: Android 7+ only needs v2, but some file managers and OEM installers still read the v1 files
 java -jar $T/apksigner.jar sign --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --ks "$KEYSTORE" --ks-pass pass:$KS_PASS --ks-key-alias $KS_ALIAS --key-pass pass:$KS_PASS --min-sdk-version 24 --out dist/$NAME.apk $B/aligned.apk
