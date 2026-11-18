@@ -6,10 +6,10 @@
    The Google Play build leaves updates to Play.
    ============================================================ */
 const UPDATE_URLS = [
-  'https://raw.githubusercontent.com/shanesenbradz/Brads-Underover/main/docs/version.json',
-  'https://shanesenbradz.github.io/Brads-Underover/version.json',
+  'https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/docs/version.json',
+  'https://shanesenbradz.github.io/OverUnder/version.json',
 ];
-const SITE_URL = 'https://shanesenbradz.github.io/Brads-Underover/';
+const SITE_URL = 'https://shanesenbradz.github.io/OverUnder/';
 
 const Updater = {
   native: window.BullpupUpdate || null,

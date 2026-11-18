@@ -2,7 +2,7 @@
 
 A Nintendo DS emulator for Android, built from Brad's Bullpup. Same controller, same menus, same Look tab, but the core underneath is melonDS, the most accurate open source DS emulator, compiled to WebAssembly. The whole app is one offline HTML file in a tiny native WebView shell. The APK is about 720 KB.
 
-**Play it in your browser:** https://shanesenbradz.github.io/Brads-Underover/
+**Play it in your browser:** https://shanesenbradz.github.io/OverUnder/
 
 <p>
 <img src="docs/screenshot.png" width="260" alt="Portrait: both screens stacked above the controller">
@@ -13,11 +13,11 @@ No games are included. Load games you dumped from cartridges you own.
 
 ## Install
 
-On your phone, open the **[download page](https://shanesenbradz.github.io/Brads-Underover/download/)** and tap Download APK. Open the file and allow installs from your browser if Android asks. Play Protect may warn about an unknown developer, since it isn't from the Play Store. Tap "Install anyway".
+On your phone, open the **[download page](https://shanesenbradz.github.io/OverUnder/download/)** and tap Download APK. Open the file and allow installs from your browser if Android asks. Play Protect may warn about an unknown developer, since it isn't from the Play Store. Tap "Install anyway".
 
 It runs on Android 7 and up and installs next to Brad's Bullpup (it's a separate app, com.bradz.underover). It updates itself from System, Updates.
 
-You can also skip the install and [run it in the browser](https://shanesenbradz.github.io/Brads-Underover/). It works offline after the first visit. release/Brads_Underover_1.1.html is the same thing as one file you can keep on a phone or PC.
+You can also skip the install and [run it in the browser](https://shanesenbradz.github.io/OverUnder/). It works offline after the first visit. release/Brads_Underover_1.1.html is the same thing as one file you can keep on a phone or PC.
 
 ## The two screens
 

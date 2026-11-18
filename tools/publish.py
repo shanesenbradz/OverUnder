@@ -6,8 +6,8 @@ writes docs/version.json, which the app reads to offer in-place updates.
 """
 import hashlib, json, os, pathlib, re, shutil, sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-RAW = 'https://raw.githubusercontent.com/shanesenbradz/Brads-Underover/main/'
-SITE = 'https://shanesenbradz.github.io/Brads-Underover/'
+RAW = 'https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/'
+SITE = 'https://shanesenbradz.github.io/OverUnder/'
 
 def ver(script, lite):
     s = (ROOT / 'tools/build_apk.sh').read_text()

@@ -2,10 +2,10 @@
   "full": {
     "version": "1.1",
     "code": 2,
-    "apk": "https://raw.githubusercontent.com/shanesenbradz/Brads-Underover/main/release/Brads_Underover_1.1.apk",
-    "page": "https://shanesenbradz.github.io/Brads-Underover/download/",
+    "apk": "https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/release/Brads_Underover_1.1.apk",
+    "page": "https://shanesenbradz.github.io/OverUnder/download/",
     "size": 1348915,
-    "sha256": "9ad919b531403781a86ee7100b15774deb2ff3e82868ed74a64b1475e0687011",
+    "sha256": "4ee9930e70a8a6caaab6df663571a48e35df4e0367b245d8cd069afc77e5a2de",
     "notes": [
       "One screen by default, like Bullpup: the top screen in Bullpup's screen area, SWAP brings the touch screen up in its place. Both screens (stacked or side by side) are still in Look, Screens",
       "Smoother: frames are paced to the screen instead of run in bursts, and the sound adjusts by up to half a percent to stay in step",

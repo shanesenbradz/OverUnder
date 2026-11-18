@@ -2959,7 +2959,7 @@ const Panels = {
         h('button', { class: 'btn', onclick: importBackup }, 'Import backup')),
     ));
     b.append(updatesSection());
-    b.append(sec('About', h('div', { class: 'note', html: `<b>Brad's Underover</b> ${APP_VERSION}. Nintendo DS emulation by <b>melonDS</b> (Arisotura and the melonDS team, GPL 3), built into WebAssembly with SIMD for this app, with its open-source FreeBIOS so no BIOS or firmware files are needed. The app around it comes from Brad's Bullpup. Source is public on GitHub. No games are included. Only play games you dumped from cartridges you own. Nothing is collected or sent anywhere: your games, saves and settings stay on this device. <a href="https://shanesenbradz.github.io/Brads-Underover/privacy.html" target="_blank" rel="noopener">Privacy policy</a>` })));
+    b.append(sec('About', h('div', { class: 'note', html: `<b>Brad's Underover</b> ${APP_VERSION}. Nintendo DS emulation by <b>melonDS</b> (Arisotura and the melonDS team, GPL 3), built into WebAssembly with SIMD for this app, with its open-source FreeBIOS so no BIOS or firmware files are needed. The app around it comes from Brad's Bullpup. Source is public on GitHub. No games are included. Only play games you dumped from cartridges you own. Nothing is collected or sent anywhere: your games, saves and settings stay on this device. <a href="https://shanesenbradz.github.io/OverUnder/privacy.html" target="_blank" rel="noopener">Privacy policy</a>` })));
   },
 };
 
@@ -3131,10 +3131,10 @@ function initEditBar() {
    The Google Play build leaves updates to Play.
    ============================================================ */
 const UPDATE_URLS = [
-  'https://raw.githubusercontent.com/shanesenbradz/Brads-Underover/main/docs/version.json',
-  'https://shanesenbradz.github.io/Brads-Underover/version.json',
+  'https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/docs/version.json',
+  'https://shanesenbradz.github.io/OverUnder/version.json',
 ];
-const SITE_URL = 'https://shanesenbradz.github.io/Brads-Underover/';
+const SITE_URL = 'https://shanesenbradz.github.io/OverUnder/';
 
 const Updater = {
   native: window.BullpupUpdate || null,
