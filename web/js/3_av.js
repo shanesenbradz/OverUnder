@@ -93,10 +93,11 @@ class AudioOut {
   push(chunk, frames) { this.post(chunk); this.enq += frames; }
   flush() { this.post({ flush: true }); this.enq = 0; this.used = 0; }
   get buffered() { return this.enq - this.used; }
-  setRate(rate, speed = 1) {
-    if (rate === this.rate && speed === this.speed && this._sr === this.ctx.sampleRate) return;
-    this.rate = rate; this.speed = speed; this._sr = this.ctx.sampleRate;
-    this.post({ ratio: rate * speed / this.ctx.sampleRate });
+  // skew is the small drift correction from the emulation loop (0.995 to 1.005)
+  setRate(rate, speed = 1, skew = 1) {
+    if (rate === this.rate && speed === this.speed && this._sr === this.ctx.sampleRate && Math.abs(skew - (this.skew || 1)) < 0.0005) return;
+    this.rate = rate; this.speed = speed; this._sr = this.ctx.sampleRate; this.skew = skew;
+    this.post({ ratio: rate * speed * skew / this.ctx.sampleRate });
   }
   apply(S) {
     const t = this.ctx.currentTime, set = (p, v) => p.setTargetAtTime(v, t, 0.02);

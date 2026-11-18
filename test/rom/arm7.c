@@ -22,17 +22,23 @@ int main(void)
 {
     R16(0x04000304) = 1;               /* POWCNT2: speakers on */
     R32(0x04000500) = 0x807F;          /* SOUNDCNT: master enable, full volume */
-    u32 n = 0, level = 0, frame = 0;
+    u32 level = 0, frame = 0;
+    /* like a real game: sleep until the next VBlank instead of spinning */
+    R16(0x04000004) |= 1 << 3;          /* DISPSTAT: VBlank IRQ */
+    R32(0x04000210) = 1;                /* IE: VBlank (IME stays off, halt still wakes on it) */
     for (;;)
     {
+        R32(0x04000214) = 1;            /* acknowledge */
+        *(volatile u8 *)0x04000301 = 0x80;  /* HALTCNT: halt until VBlank */
         u16 ext = R16(0x04000136);
         SHARED[1] = ext;
         u16 x = tsc(0xD0) >> 4, y = tsc(0x90) >> 4;
         int pen = !(ext & 0x40);
         SHARED[0] = (x & 0xFF) | (y & 0xFF) << 8 | pen << 16;
-        int s = (int)tsc(0xE0) - 2048; if (s < 0) s = -s;
-        if ((u32)s > level) level = s;
-        if (++n >= 64) { SHARED[2] = level; level = (level * 7) >> 3; n = 0; }
+        /* a burst of mic samples each frame, like a game listening for a blow */
+        level = (level * 7) >> 3;
+        for (int k = 0; k < 64; k++) { int s = (int)tsc(0xE0) - 2048; if (s < 0) s = -s; if ((u32)s > level) level = s; }
+        SHARED[2] = level;
         u32 beep = SHARED[3];
         /* channel 8 is a PSG channel: duty 50%, centre pan, volume 100 */
         if (beep) { R16(0x04000488) = (u16)(0x10000 - 0x2000); R32(0x04000480) = 0x80000000 | (3u << 29) | (3u << 24) | (64u << 16) | 100; }

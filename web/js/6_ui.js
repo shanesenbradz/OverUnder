@@ -459,8 +459,8 @@ const Panels = {
   video(b) {
     const views = () => { Emu.active && (Emu.applyView(), Touch.build(), Emu.layoutScreen()); };
     b.append(sec('Screens',
-      row('Layout', null, null),
-      chips('dsLayout', [['stack', 'Stacked'], ['side', 'Side by side'], ['single', 'One at a time']], () => { views(); Sheet.render(); }),
+      row('Layout', S.dsLayout === 'single' ? 'Plays like Bullpup: the top screen fills the screen area and SWAP brings the touch screen up in its place' : 'The classic DS look, both screens at once', null),
+      chips('dsLayout', [['single', 'One screen'], ['stack', 'Both, stacked'], ['side', 'Both, side by side']], () => { views(); Sheet.render(); }),
       S.dsLayout === 'single'
         ? row('Show the touch screen', 'Swaps which screen you see. The SWAP button does the same while you play.', sw('dsSwap', views))
         : row('Touch screen first', 'Puts the bottom screen on top (or on the left)', sw('dsSwap', views)),
@@ -580,6 +580,8 @@ const Panels = {
     b.append(sec('Performance',
       row('Frame skip', 'Leaves out some pictures when the phone falls behind. The game and sound keep full speed.', sel('frameskip', [['auto', 'Auto'], [0, 'Off'], [1, '1 of 2'], [2, '2 of 3'], [3, '3 of 4']], () => { Emu.skip = 0; Emu.hud(); })),
       row('Show FPS', null, sw('showFps', () => Emu.hud())),
+      core.threaded ? row('3D on its own core', 'The 3D scene is drawn on a second CPU core while the game runs on the first', swRaw(!!core.m._nds_is_threaded(), v => core.m._nds_set_threaded(v ? 1 : 0))) : null,
+      h('div', { class: 'note', style: { marginTop: '8px' } }, core.threaded ? 'Running the threaded core.' : 'Running the single-threaded core. The installed app and the website (after its first visit) use the threaded one, which draws 3D on a second core.'),
       ms ? h('div', { class: 'note', style: { marginTop: '8px' } }, ms) : null,
       LITE ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'For the fastest picture use the Sharp or Smooth screen, with color correction and frame blending off. The phone\'s graphics chip then does the scaling.') : null,
     ));

@@ -18,6 +18,12 @@
 #include <deque>
 #include <functional>
 #include <emscripten/emscripten.h>
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <thread>
+#include <mutex>
+#include <semaphore.h>
+#include <time.h>
+#endif
 #ifdef __wasm_simd128__
 #include <wasm_simd128.h>
 #endif
@@ -42,7 +48,11 @@ using namespace melonDS;
 /* ---------------------------------------------------------------- state */
 static NDS* nds = nullptr;
 static double g_rate = 48000.0;
+#ifdef __EMSCRIPTEN_PTHREADS__
+static bool g_threaded = true;   // threaded build: 3D on its own core by default
+#else
 static bool g_threaded = false;
+#endif
 static int g_interp = 0;     // AudioInterpolation
 static int g_bitdepth = 0;   // AudioBitDepth
 static std::string g_name = "Brad";
@@ -124,6 +134,33 @@ void Log(LogLevel level, const char* fmt, ...)
     fputs(buf, stderr);
 }
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+/* threaded build: the software 3D renderer gets its own thread (a Web Worker sharing the heap),
+   so a frame's 3D scene is drawn on a second core while the ARM9 and ARM7 run the game */
+struct Thread { std::thread t; };
+Thread* Thread_Create(std::function<void()> func) { return new Thread{std::thread(std::move(func))}; }
+void Thread_Free(Thread* t) { if (t->t.joinable()) t->t.detach(); delete t; }
+void Thread_Wait(Thread* t) { if (t->t.joinable()) t->t.join(); }
+struct Semaphore { sem_t s; };
+Semaphore* Semaphore_Create() { auto* x = new Semaphore; sem_init(&x->s, 0, 0); return x; }
+void Semaphore_Free(Semaphore* x) { sem_destroy(&x->s); delete x; }
+void Semaphore_Reset(Semaphore* x) { while (sem_trywait(&x->s) == 0) {} }
+void Semaphore_Wait(Semaphore* x) { while (sem_wait(&x->s) != 0) {} }
+bool Semaphore_TryWait(Semaphore* x, int timeout_ms)
+{
+    if (!timeout_ms) return sem_trywait(&x->s) == 0;
+    struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_nsec += (long)timeout_ms * 1000000L; ts.tv_sec += ts.tv_nsec / 1000000000L; ts.tv_nsec %= 1000000000L;
+    return sem_timedwait(&x->s, &ts) == 0;
+}
+void Semaphore_Post(Semaphore* x, int count) { for (int i = 0; i < count; i++) sem_post(&x->s); }
+struct Mutex { std::mutex m; };
+Mutex* Mutex_Create() { return new Mutex; }
+void Mutex_Free(Mutex* m) { delete m; }
+void Mutex_Lock(Mutex* m) { m->m.lock(); }
+void Mutex_Unlock(Mutex* m) { m->m.unlock(); }
+bool Mutex_TryLock(Mutex* m) { return m->m.try_lock(); }
+#else
 /* single-threaded build: the software 3D renderer runs in line, so these never block */
 struct Thread { std::function<void()> fn; };
 Thread* Thread_Create(std::function<void()> func) { return new Thread{std::move(func)}; }
@@ -142,6 +179,7 @@ void Mutex_Free(Mutex* m) { delete m; }
 void Mutex_Lock(Mutex*) {}
 void Mutex_Unlock(Mutex*) {}
 bool Mutex_TryLock(Mutex*) { return true; }
+#endif
 void Sleep(u64) {}
 u64 GetMSCount() { return (u64)emscripten_get_now(); }
 u64 GetUSCount() { return (u64)(emscripten_get_now() * 1000.0); }
@@ -301,6 +339,7 @@ EXPORT void nds_reset()
     nds->Start();
 }
 
+EXPORT int nds_is_threaded() { return g_threaded; }
 EXPORT void nds_set_threaded(int on) { g_threaded = on != 0; if (nds) ApplyRendererSettings(); }
 
 /* buttons, active high: A B Sel Start Right Left Up Down R L X Y (bits 0..11) */

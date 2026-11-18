@@ -124,10 +124,10 @@ const Emu = {
     if (this.paused) return;
     if (Link.active) Link.watchdog(now);
     const fps = core.fps, sp = this.speed();
-    const rate = core.sampleRate || 32768;
-    Audio_.setRate(rate, sp < 1 ? sp : 1);
+    const rate = core.sampleRate || 48000;
 
     if (this.rewinding && this.rw && !Link.active) {
+      Audio_.setRate(rate, 1);
       let stepped = false;
       for (let i = 0; i < S.rewindRate; i++) { if (!this.rw.step()) break; stepped = true; }
       if (stepped) { core.setKeys(0); core.frame(); core.drainAudio(null); renderer.draw(core.video(), S); }
@@ -135,18 +135,28 @@ const Emu = {
       return;
     }
 
-    let frames = 0;
+    // Display-locked pacing. Wall time decides how many frames to run (59.83 a second), at most one
+    // per screen refresh while the phone keeps up: every refresh of a 60 Hz screen gets a new
+    // picture, every other one on 120 Hz. The sound card's clock never quite matches, so instead
+    // of running extra frames in bursts to top up the sound buffer (a DS frame is 10+ ms of work,
+    // two at once is a visible hitch) the sound is resampled up to half a percent faster or slower
+    // to hold the buffer near its target. The GBA app could afford bursts; a DS can't.
+    let frames = 0, skew = 1;
     const audioOk = Audio_.running && this.audioClock(now);
+    this.acc += dt / 1000 * fps * sp;
     if (sp === 1 && audioOk) {
-      const deficit = Math.round(rate * (LITE ? 0.1 : 0.075)) - Audio_.buffered;
-      frames = deficit > 0 ? Math.ceil(deficit / (rate / fps)) : 0;
-      frames = Math.min(frames, 4); this.acc = 0;
+      const target = rate * 0.07, buf = Audio_.buffered;
+      skew = 1 + clamp((buf - target) / target * 0.012, -0.005, 0.005);
+      if (buf < rate * 0.015 && this.acc < 1) this.acc = 1;      // about to run dry: one frame now
+      if (this.acc > 3) this.acc = 1.2;                           // fell well behind: don't burst to catch up
+      frames = Math.min(Math.floor(this.acc), 2);
     } else {
-      this.acc += dt / 1000 * fps * sp;
-      frames = Math.floor(this.acc); this.acc -= frames;
-      frames = Math.min(frames, sp > 1 ? Math.ceil(sp) * 2 + 2 : 4);
+      if (this.acc > 6) this.acc = 1;
+      frames = Math.min(Math.floor(this.acc), sp > 1 ? Math.ceil(sp) * 2 + 2 : 2);
       if (sp > 1 && Audio_.buffered > rate * 0.15) Audio_.flush();
     }
+    this.acc -= frames;
+    Audio_.setRate(rate, sp < 1 ? sp : 1, skew);
     if (frames <= 0) return;
     const chopEvery = sp > 1 ? Math.round(sp) : 1;
     let ran = 0, drew = false; const t0 = performance.now();
@@ -276,7 +286,7 @@ const Emu = {
       case 'shot': this.screenshot(); break;
       case 'menu': Sheet.toggle(); break;
       case 'swap_screens': if (S.swapMode !== 'hold') this.swapScreens(); break;
-      case 'layout_next': S.dsLayout = { stack: 'side', side: 'single', single: 'stack' }[S.dsLayout] || 'stack'; saveSettings(); this.applyView(); Touch.build(); this.layoutScreen(); toast({ stack: 'Screens stacked', side: 'Screens side by side', single: 'One screen at a time' }[S.dsLayout]); break;
+      case 'layout_next': S.dsLayout = { single: 'stack', stack: 'side', side: 'single' }[S.dsLayout] || 'single'; saveSettings(); this.applyView(); Touch.build(); this.layoutScreen(); toast({ stack: 'Both screens, stacked', side: 'Both screens, side by side', single: 'One screen' }[S.dsLayout]); break;
       case 'lid': core.setLid(!core.lidClosed); toast(core.lidClosed ? 'Lid closed' : 'Lid open'); break;
     }
   },

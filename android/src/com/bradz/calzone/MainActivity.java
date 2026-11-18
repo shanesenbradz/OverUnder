@@ -120,6 +120,10 @@ public class MainActivity extends Activity {
                     Map<String, String> h = new HashMap<>();
                     h.put("Cache-Control", "no-cache");
                     h.put("Access-Control-Allow-Origin", "*");
+                    // cross-origin isolation: lets the page use SharedArrayBuffer, so the DS core can
+                    // render 3D on a second CPU core (the page falls back to one core without it)
+                    h.put("Cross-Origin-Opener-Policy", "same-origin");
+                    h.put("Cross-Origin-Embedder-Policy", "require-corp");
                     r.setResponseHeaders(h);
                     return r;
                 } catch (Exception e) {

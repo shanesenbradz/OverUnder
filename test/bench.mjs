@@ -3,8 +3,9 @@
 import { createRequire } from 'module'; import fs from 'fs'; import path from 'path';
 const require = createRequire(import.meta.url);
 const root = path.dirname(new URL(import.meta.url).pathname) + '/..';
-const create = require(root + '/vendor/melonds/melonds.js');
-const m = await create({ wasmBinary: fs.readFileSync(root + '/vendor/melonds/melonds.wasm'), printErr: t => process.stderr.write(t + '\n') });
+const MT = process.env.MT === '1', dir = root + (MT ? '/vendor/melonds/mt' : '/vendor/melonds');
+const create = require(dir + '/melonds.js');
+const m = await (MT ? create : create)({ wasmBinary: fs.readFileSync(dir + '/melonds.wasm'), printErr: t => process.stderr.write(t + '\n') });
 const rom = fs.readFileSync(process.argv[2] || root + '/test/rom/bullpup_test.nds');
 const N = +process.argv[3] || 300;
 m._nds_set_log_level(4);

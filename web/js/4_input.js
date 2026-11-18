@@ -23,10 +23,11 @@ const DEFAULTS = {
   volume: 1, mute: false, bass: 0, mid: 0, treble: 0, speaker: false, width: 1, reverb: 'off', reverbMix: 0.3, reverbSize: 1, limiter: true, ffAudio: 'chop',
   // speed
   ffSpeed: 3, slowSpeed: 0.5, rewind: true, rewindMB: 96, rewindEvery: 4, rewindRate: 1,
-  // DS screens: stack, side or single; dsSwap puts the bottom screen first (in single, shows it)
-  dsLayout: 'stack', dsSwap: false, dsGap: 0, swapMode: 'toggle',
+  // DS screens. single (the default) plays like Bullpup: one screen in the Bullpup screen area, the top
+  // one, and SWAP puts the touch screen there instead. stack and side show both screens.
+  dsLayout: 'single', dsSwap: false, dsGap: 0, swapMode: 'toggle',
   // DS console: the profile games read from the firmware, sound quality, microphone
-  nick: 'Brad', lang: 1, favColor: 0, bMonth: 1, bDay: 1, interp: 2, bitDepth: 0, micSource: 'blow',
+  nick: 'Brad', lang: 1, favColor: 0, bMonth: 1, bDay: 1, interp: 1, bitDepth: 0, micSource: 'blow',
   // controls
   keys: DEFAULT_KEYS, pad: DEFAULT_PAD, haptics: true, ctlOpacity: 0.85, turboRate: 3, showTouch: 'auto', layout: null,
   // look
@@ -50,7 +51,7 @@ const S = (() => {
   if (!s.v || s.v < 3) { s.btnStyle = 'console'; s.shell = true; s.v = 3; } // 1.3: molded console look by default
   if (s.v < 4) { const P = s.layout && s.layout.portrait; if (P) for (const k of ['rw', 'menu', 'ff']) delete P[k]; s.v = 4; } // respace hotkeys for button wells
   if (s.v < 5) { s.saveLights = !LITE; s.v = 5; } // 1.5: auto save lights on for everyone
-  if (s.v < 7) { s.layout = null; s.v = 7; } // DS: new buttons and screen-aware layouts
+  if (s.v < 8) { s.layout = null; s.dsLayout = 'single'; s.dsSwap = false; s.v = 8; } // 1.1: one screen like Bullpup by default // DS: new buttons and screen-aware layouts
   if (LITE) Object.assign(s, LITE_LOCKED);
   return s;
 })();

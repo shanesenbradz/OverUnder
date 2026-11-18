@@ -7,21 +7,58 @@ const DS_FPS = 59.8261;
 // how the two screens are laid out into one picture (nds_compose)
 const SCREEN_LAYOUT = { stack: 0, side: 1, single: 2 };
 
+// The threaded core needs SharedArrayBuffer, which browsers only allow on a cross-origin isolated
+// page: the Android app and the GitHub Pages service worker send the headers for that. A plain file
+// (or an old WebView) gets the single-threaded core, same features, 3D drawn in line.
+const THREADS_OK = (() => {
+  try { return self.crossOriginIsolated === true && typeof CORE_MT_JS === 'string' && new WebAssembly.Memory({ initial: 1, maximum: 1, shared: true }).buffer instanceof SharedArrayBuffer; }
+  catch (e) { return false; }
+})();
+
 class Core {
   async init() {
-    const wasmBinary = b64ToBytes(WASM_B64);
-    this.m = await createMelonModule({
-      instantiateWasm(imports, done) { WebAssembly.instantiate(wasmBinary, imports).then(r => done(r.instance)); return {}; },
-      print() {}, printErr(t) { console.debug('[melonDS]', t); },
-    });
+    this.threaded = false;
+    if (THREADS_OK) {
+      try { await this.initThreaded(); this.threaded = true; }
+      catch (e) { console.warn('threaded core did not start, using the single-threaded one', e); }
+    }
+    if (!this.threaded) {
+      const wasmBinary = b64ToBytes(WASM_B64);
+      this.m = await createMelonModule({
+        instantiateWasm(imports, done) { WebAssembly.instantiate(wasmBinary, imports).then(r => done(r.instance, r.module)); return {}; },
+        print() {}, printErr(t) { console.debug('[melonDS]', t); },
+      });
+    }
     this.m._nds_set_log_level(3);
     this.loaded = false;
     this.audioPtr = this.m._malloc(4096 * 4);
     this.micPtr = this.m._malloc(8192 * 2);
     this.rate = 48000;
-    this.view = { layout: 'stack', swap: false, gap: 0 };
+    this.view = { layout: 'single', swap: false, gap: 0 };
   }
-  get H() { return this.m.HEAPU8; }
+  // the threaded build: the 3D renderer runs on its own core in a Web Worker that shares the heap
+  async initThreaded() {
+    const js = new Blob([CORE_MT_JS], { type: 'text/javascript' });
+    const workerUrl = URL.createObjectURL(new Blob([CORE_MT_WORKER], { type: 'text/javascript' }));
+    if (typeof createMelonModuleMT === 'undefined') await new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = URL.createObjectURL(js); s.onload = res; s.onerror = rej; document.head.append(s);
+    });
+    // our own memory object, so the views can be rebuilt if the heap grows (128 MB, up to 1 GB)
+    this.mem = new WebAssembly.Memory({ initial: 2048, maximum: 16384, shared: true });
+    const bin = b64ToBytes(WASM_MT_B64);
+    this.m = await createMelonModuleMT({
+      wasmMemory: this.mem, mainScriptUrlOrBlob: js,
+      locateFile: p => p.endsWith('.worker.js') ? workerUrl : p,
+      instantiateWasm(imports, done) { WebAssembly.instantiate(bin, imports).then(r => done(r.instance, r.module)); return {}; },
+      print() {}, printErr(t) { console.debug('[melonDS]', t); },
+    });
+  }
+  // heap views; a grown shared heap is a new buffer, so they are refreshed when that happens
+  get H() {
+    if (this.mem && this._hb !== this.mem.buffer) { this._hb = this.mem.buffer; this._u8 = new Uint8Array(this._hb); this._i16 = new Int16Array(this._hb); }
+    return this.mem ? this._u8 : this.m.HEAPU8;
+  }
+  get H16() { this.H; return this.mem ? this._i16 : this.m.HEAP16; }
   setAudio(rate, interp = 0, bits = 0) { this.rate = rate; this.m._nds_set_audio(rate, interp, bits); }
   setUser(o) {
     const p = this.m.stringToNewUTF8((o.name || 'Player').slice(0, 10));
@@ -32,8 +69,8 @@ class Core {
     const m = this.m;
     if (this.loaded) this.unload();
     const rp = m._malloc(rom.length); if (!rp) return false;
-    m.HEAPU8.set(rom, rp);
-    let sp = 0; if (save && save.length) { sp = m._malloc(save.length); m.HEAPU8.set(save, sp); }
+    this.H.set(rom, rp);
+    let sp = 0; if (save && save.length) { sp = m._malloc(save.length); this.H.set(save, sp); }
     const ok = m._nds_load(rp, rom.length, sp, sp ? save.length : 0, 1);
     if (sp) m._free(sp); // the ROM buffer now belongs to the core
     if (!ok) return false;
@@ -51,44 +88,47 @@ class Core {
   setLid(closed) { this.m._nds_set_lid(closed ? 1 : 0); }
   get lidClosed() { return !!this.m._nds_lid(); }
   micBlow(on) { this.m._nds_mic_blow(on ? 1 : 0); }
-  micPush(s16) { const n = Math.min(s16.length, 8192); new Int16Array(this.m.HEAPU8.buffer, this.micPtr, n).set(s16.subarray(0, n)); this.m._nds_mic_push(this.micPtr, n); }
+  micPush(s16) { const n = Math.min(s16.length, 8192); this.H16.set(s16.subarray(0, n), this.micPtr >> 1); this.m._nds_mic_push(this.micPtr, n); }
   get topIsMain() { return !!this.m._nds_top_is_main(); }
   setView(v) { Object.assign(this.view, v); this._frame = null; }
   // the two screens laid out as one RGBA picture, rebuilt only after a drawn frame
   video() {
-    if (this._frame && this._frame.data.buffer === this.m.HEAPU8.buffer) return this._frame;
+    if (this._frame && (this.mem || this._frame.data.buffer === this.H.buffer)) return this._frame;
     const m = this.m, v = this.view;
     const wh = m._nds_compose(SCREEN_LAYOUT[v.layout] ?? 0, v.swap ? 1 : 0, v.gap | 0);
     const w = wh >>> 16, h = wh & 0xFFFF, p = m._nds_frame_ptr();
     if (!w || !p) return { w: 256, h: 384, data: new Uint8Array(256 * 384 * 4) };
-    return (this._frame = { w, h, data: m.HEAPU8.subarray(p, p + w * h * 4) });
+    let data = this.H.subarray(p, p + w * h * 4);
+    // WebGL won't read from shared memory, so the threaded core hands over a copy (about 0.05 ms)
+    if (this.mem) { if (!this._fb || this._fb.length !== data.length) this._fb = new Uint8Array(data.length); this._fb.set(data); data = this._fb; }
+    return (this._frame = { w, h, data });
   }
   drainAudio(cb) {
     const m = this.m;
     for (;;) {
       const n = m._nds_read_audio(this.audioPtr, 4096);
       if (n <= 0) return;
-      if (cb) cb(m.HEAP16.slice(this.audioPtr >> 1, (this.audioPtr >> 1) + n * 2), n);
+      if (cb) cb(this.H16.slice(this.audioPtr >> 1, (this.audioPtr >> 1) + n * 2), n);
       if (n < 4096) return;
     }
   }
-  saveState() { const n = this.m._nds_state_save(); if (!n) return null; const p = this.m._nds_state_ptr(); return this.m.HEAPU8.slice(p, p + n); }
+  saveState() { const n = this.m._nds_state_save(); if (!n) return null; const p = this.m._nds_state_ptr(); return this.H.slice(p, p + n); }
   loadState(u8) {
     if (!u8 || u8.length < 16 || String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== 'MELN') return false;
-    const p = this.m._malloc(u8.length); this.m.HEAPU8.set(u8, p);
+    const p = this.m._malloc(u8.length); this.H.set(u8, p);
     const ok = this.m._nds_state_load(p, u8.length); this.m._free(p); this._frame = null;
     return !!ok;
   }
   // cart save memory (EEPROM, flash or FRAM)
   get saveDirty() { return !!this.m._nds_save_dirty(); }
-  sram() { const n = this.m._nds_save_len(), p = this.m._nds_save_ptr(); if (!n || !p) return null; return this.m.HEAPU8.slice(p, p + n); }
-  loadSram(b) { if (!b || !b.length) return; const p = this.m._malloc(b.length); this.m.HEAPU8.set(b, p); this.m._nds_save_import(p, b.length); this.m._free(p); }
+  sram() { const n = this.m._nds_save_len(), p = this.m._nds_save_ptr(); if (!n || !p) return null; return this.H.slice(p, p + n); }
+  loadSram(b) { if (!b || !b.length) return; const p = this.m._malloc(b.length); this.H.set(b, p); this.m._nds_save_import(p, b.length); this.m._free(p); }
   // Action Replay DS codes, run by the core itself on the ARM7 VBlank like the real cart
   setCheats(list) {
     const m = this.m; m._nds_cheats_clear();
     for (const words of list) {
       if (!words.length) continue;
-      const p = m._malloc(words.length * 4); new Uint32Array(m.HEAPU8.buffer, p, words.length).set(words);
+      const p = m._malloc(words.length * 4); new Uint32Array(this.H.buffer, p, words.length).set(words);
       m._nds_cheat_add(p, words.length); m._free(p);
     }
   }

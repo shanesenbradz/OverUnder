@@ -7,7 +7,8 @@ screen layouts. Screenshots go to /tmp/underover-*.png.
 import asyncio, json, pathlib, sys
 from playwright.async_api import async_playwright
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-URL = (ROOT / 'dist/Brads_Underover.html').as_uri()
+import os
+URL = os.environ.get('URL') or (ROOT / 'dist/Brads_Underover.html').as_uri()
 ROM = ROOT / 'test/rom/bullpup_test.nds'
 # the test ROM keeps its variables here (see test/rom/arm9.c)
 FRAME, HEALTH, TOUCH, KEYS = 0x02100000, 0x02100004, 0x02100008, 0x0210000C
@@ -39,6 +40,9 @@ async def main():
         check('game runs', f2 > f1 > 0, f'{f1} -> {f2}')
         fps = await pg.evaluate('__underover.Emu.fps')
         check('frames per second', fps > 20, f'{fps:.1f} (headless, software GL)')
+        thr = await pg.evaluate('({t: __underover.core.threaded, iso: self.crossOriginIsolated})')
+        print('core:', 'threaded' if thr['t'] else 'single-threaded', '(cross-origin isolated)' if thr['iso'] else '')
+        if os.environ.get('EXPECT_MT'): check('threaded core running', thr['t'])
         await pg.screenshot(path='/tmp/underover-3-portrait.png')
 
         # A on the keyboard (X key) takes 7 health
@@ -54,6 +58,8 @@ async def main():
         check('touch X button', bool(k & (1 << 10)), hex(k))
 
         # stylus: tap the middle of the bottom screen (stacked layout)
+        await pg.evaluate('(()=>{const {S,Emu}=__underover; S.dsLayout="stack"; S.dsSwap=false; Emu.applyView(); Touch.build(); Emu.layoutScreen();})()')
+        await pg.wait_for_timeout(300)
         pt = await pg.evaluate('(()=>{const r=document.getElementById("screen").getBoundingClientRect();return {x:r.left+r.width*0.25,y:r.top+r.height*0.75,w:r.width,h:r.height}})()')
         await pg.mouse.move(pt['x'], pt['y']); await pg.mouse.down(); await pg.wait_for_timeout(250)
         t = await r32(TOUCH); await pg.mouse.up()
@@ -148,7 +154,8 @@ async def main():
         await pg.screenshot(path='/tmp/underover-10-game-menu.png')
 
         check('no page errors', not errs, '\n'.join(errs[:10]))
-        await b.close()
+        try: await asyncio.wait_for(b.close(), 10)
+        except Exception: pass
     print('\n' + ('ALL PASSED' if not fails else 'FAILED: ' + ', '.join(fails)))
     sys.exit(1 if fails else 0)
 asyncio.run(main())

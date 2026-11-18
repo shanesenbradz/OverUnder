@@ -17,17 +17,13 @@ On your phone, open the **[download page](https://shanesenbradz.github.io/Brads-
 
 It runs on Android 7 and up and installs next to Brad's Bullpup (it's a separate app, com.bradz.underover). It updates itself from System, Updates.
 
-You can also skip the install and [run it in the browser](https://shanesenbradz.github.io/Brads-Underover/). It works offline after the first visit. release/Brads_Underover_1.0.html is the same thing as one file you can keep on a phone or PC.
+You can also skip the install and [run it in the browser](https://shanesenbradz.github.io/Brads-Underover/). It works offline after the first visit. release/Brads_Underover_1.1.html is the same thing as one file you can keep on a phone or PC.
 
 ## The two screens
 
-The Look tab has a Screens section with three layouts:
+By default it plays exactly like Bullpup: one screen, the top one, in the same screen area with the same controller under it. Press **SWAP** and the touch screen takes its place; press it again to go back. Set SWAP to "Hold to peek" in Look, Screens if you'd rather see the touch screen only while you hold it.
 
-- **Stacked**, like holding a DS. In portrait the screens take the top of the phone and the controller sits underneath. In landscape they stand in the middle with the controls either side.
-- **Side by side**, for tablets and controllers.
-- **One at a time.** Only one screen shows, as big as the phone allows. Press **SWAP** and the touch screen becomes the main screen; press it again to go back. Set the SWAP button to "Hold to peek" if you'd rather see the touch screen only while you hold it.
-
-In the stacked and side by side layouts SWAP puts the touch screen first. There's a gap setting too, if you want the hinge back.
+The classic DS view is still there as an option in Look, Screens: both screens stacked (in landscape they stand in the middle with the controls either side) or side by side, with SWAP putting the touch screen first and an optional gap for the hinge.
 
 Tap the touch screen with your finger (or the mouse on a PC) and it's the stylus. Drag off the edge and it keeps pressing at the edge, like the real screen. In portrait the touch buttons live below the screens, so the stylus has the screens to itself.
 
@@ -55,15 +51,15 @@ The icon is a pixel over/under shotgun, drawn by web/brand/shotgun.py.
 
 I went through how the fast DS emulators get their speed before picking the core. DraStic and melonDS on desktop both lean on a JIT that turns ARM code into native code, and WebAssembly can't do that, so the gains here come from everywhere else:
 
-- melonDS is built with -O3, link time optimisation (about 5% faster frames) and WebAssembly SIMD
-- The two screens are converted from melonDS's colour format to RGBA and laid out with SIMD in one pass, about 0.06 ms a frame, and only for frames that get shown
-- Frame skip goes deeper than in Bullpup: a skipped frame doesn't draw its 2D layers, and the DS renders 3D one frame ahead, so the 3D scene is only rendered for a frame that will actually be shown. Both stay on while a game uses display capture, so nothing breaks
-- Rewind diffs the 6 MB states in C with SIMD instead of in JavaScript, about 3 ms per snapshot
-- Save states shrank from 19 MB to 6 MB by saving the 4 MB of RAM a DS has instead of the DSi's 16
-- The ROM isn't copied into the core, it's handed over, so a 512 MB game needs 512 MB, not a gigabyte
-- Sound comes out of the core at the phone's own sample rate, so there's no extra resampling step
+- **Two cores.** The installed app runs a threaded build of melonDS: the 3D scene is drawn on a second CPU core (a Web Worker sharing memory) while the game runs on the first. On the 3D test that's about 25% less work on the main core. It needs a cross-origin isolated page, so the Android app sends the headers for it and the website's service worker adds them after the first visit. A plain HTML file falls back to the single-threaded core
+- **Pacing locked to the screen.** Bullpup topped up its sound buffer by running two to four frames at once when it ran low. A GBA frame is cheap, so nobody saw it. A DS frame is 10 ms or more of work, so in a game like HeartGold those bursts showed as judder. Now wall time decides how many frames run, never more than one per screen refresh while the phone keeps up, and the sound is resampled up to half a percent faster or slower to hold its buffer steady. Every refresh of a 60 Hz screen gets a new picture, every other one on 120 Hz
+- melonDS is built with -O3, link time optimisation and WebAssembly SIMD
+- Reads from main RAM and the ARM7's own RAM skip melonDS's address decoder and go straight to memory
+- The screens are converted to RGBA and laid out with SIMD, about 0.06 ms a frame, and only for frames that get shown
+- Frame skip leaves out a skipped frame's 2D layers, and the 3D scene is only rendered for frames that will be shown. Both stay on while a game uses display capture
+- Rewind diffs states in C with SIMD, save states are 6 MB instead of 19, and the ROM is handed to the core instead of copied
 
-On the server I test on (a 2.1 GHz Xeon, one core) the 3D test ROM runs at about 150% of full speed. A recent phone is faster than that per core, but a JIT-less DS emulator is still demanding: heavy 3D games on older phones will need frame skip.
+System, Performance shows which core is running and how long a frame takes on your phone (16.7 ms is full speed).
 
 ## How it's put together
 
@@ -81,7 +77,7 @@ release/        signed APKs and HTML builds, one per version
 
 melonDS boots games with its built-in FreeBIOS and a generated firmware, so there's no BIOS or firmware to load. Games always boot straight in, with no DS menu.
 
-The test ROM in test/rom is a tiny DS program built with clang and lld, no devkitPro. The top screen spins a ring of 600 3D triangles to load the renderer, and the bottom screen shows a box per button, a health bar, a mic meter and a crosshair under the stylus. A takes 7 health, START writes it to the cart's EEPROM, B beeps.
+The test ROM in test/rom is a tiny DS program built with clang and lld, no devkitPro. Like a real game its ARM7 sleeps until each VBlank. The top screen spins a ring of 600 3D triangles to load the renderer, and the bottom screen shows a box per button, a health bar, a mic meter and a crosshair under the stylus. A takes 7 health, START writes it to the cart's EEPROM, B beeps.
 
 ## Building it yourself
 
@@ -101,7 +97,9 @@ Tests:
 
 ```
 node test/bench.mjs              # speed, input, states and rewind straight on the core
-python3 test/e2e.py              # the whole app in headless Chromium
+python3 test/e2e.py              # the whole app in headless Chromium (single-threaded core)
+python3 test/serve.py 8765 &     # docs/ with the isolation headers, then:
+URL=http://127.0.0.1:8765/ EXPECT_MT=1 python3 test/e2e.py   # the same with the threaded core
 ```
 
 The end-to-end test boots the test ROM and checks the keyboard, touch buttons, the stylus in all three layouts, SWAP in one-screen mode, the mic, Action Replay and raw cheats, RAM search, save states, rewind, and that an in-game save survives leaving and coming back.

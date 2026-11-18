@@ -16,7 +16,7 @@ index 7365c4f..5e1f7e5 100644
  
      melonDS::NDS& NDS;
 diff --git a/src/ARM.cpp b/src/ARM.cpp
-index 3937a99..7a3d5ce 100644
+index 3937a99..d8be549 100644
 --- a/src/ARM.cpp
 +++ b/src/ARM.cpp
 @@ -542,8 +542,7 @@ void ARM::TriggerIRQ()
@@ -27,6 +27,53 @@ index 3937a99..7a3d5ce 100644
 -            NDS.AREngine.RunCheats();
 +        // Bullpup runs cheats once per frame from the frontend instead (see AREngine.h)
      }
+ }
+ 
+@@ -1248,18 +1247,23 @@ void ARMv4::AddCycles_CD()
+     }
+ }
+ 
++// Bullpup: main RAM (and ARM7 WRAM below) are read straight from memory, skipping the virtual
++// call and the address decoder. Same result as NDS::ARM9Read*/ARM7Read*, a lot less work per access.
+ u8 ARMv5::BusRead8(u32 addr)
+ {
++    if ((addr >> 24) == 0x02 && NDS.ConsoleType == 0) return NDS.MainRAM[addr & NDS.MainRAMMask];
+     return NDS.ARM9Read8(addr);
+ }
+ 
+ u16 ARMv5::BusRead16(u32 addr)
+ {
++    if ((addr >> 24) == 0x02 && NDS.ConsoleType == 0) return *(u16*)&NDS.MainRAM[(addr & ~1) & NDS.MainRAMMask];
+     return NDS.ARM9Read16(addr);
+ }
+ 
+ u32 ARMv5::BusRead32(u32 addr)
+ {
++    if ((addr >> 24) == 0x02 && NDS.ConsoleType == 0) return *(u32*)&NDS.MainRAM[(addr & ~3) & NDS.MainRAMMask];
+     return NDS.ARM9Read32(addr);
+ }
+ 
+@@ -1280,16 +1284,22 @@ void ARMv5::BusWrite32(u32 addr, u32 val)
+ 
+ u8 ARMv4::BusRead8(u32 addr)
+ {
++    if ((addr >> 23) == (0x03800000 >> 23)) return NDS.ARM7WRAM[addr & 0xFFFF];
++    if ((addr >> 24) == 0x02 && NDS.ConsoleType == 0) return NDS.MainRAM[addr & NDS.MainRAMMask];
+     return NDS.ARM7Read8(addr);
+ }
+ 
+ u16 ARMv4::BusRead16(u32 addr)
+ {
++    if ((addr >> 23) == (0x03800000 >> 23)) return *(u16*)&NDS.ARM7WRAM[addr & 0xFFFE];
++    if ((addr >> 24) == 0x02 && NDS.ConsoleType == 0) return *(u16*)&NDS.MainRAM[(addr & ~1) & NDS.MainRAMMask];
+     return NDS.ARM7Read16(addr);
+ }
+ 
+ u32 ARMv4::BusRead32(u32 addr)
+ {
++    if ((addr >> 23) == (0x03800000 >> 23)) return *(u32*)&NDS.ARM7WRAM[addr & 0xFFFC];
++    if ((addr >> 24) == 0x02 && NDS.ConsoleType == 0) return *(u32*)&NDS.MainRAM[(addr & ~3) & NDS.MainRAMMask];
+     return NDS.ARM7Read32(addr);
  }
  
 diff --git a/src/GPU.cpp b/src/GPU.cpp

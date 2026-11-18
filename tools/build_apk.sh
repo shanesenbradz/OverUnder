@@ -6,7 +6,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 TC=.toolchain; B=build
-VC=${VC:-1}; VN=${VN:-1.0}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
+VC=${VC:-2}; VN=${VN:-1.1}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
 TARGET=${TARGET:-36}
 if [ ! -d $TC/minapk ]; then
   mkdir -p $TC && (cd $TC && npm pack @drxiaozhi/minapk@0.5.1 aaptjs3@2.0.2 >/dev/null)
