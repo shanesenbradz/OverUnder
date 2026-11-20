@@ -5,6 +5,8 @@ on:
 jobs:
   pack:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Pack the NDK r27 sysroot for arm64
         run: |
@@ -25,8 +27,9 @@ jobs:
           for a in arm-linux-androideabi i686-linux-android x86_64-linux-android riscv64-linux-android; do rm -rf $OUT/sysroot/usr/include/$a; done
           $TC/bin/clang --version > $OUT/clang-version.txt
           tar czf ndk-arm64.tgz ndk-arm64 && ls -l ndk-arm64.tgz
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ndk-arm64
-          path: ndk-arm64.tgz
-          retention-days: 3
+      - name: Commit the tarball to a scratch branch
+        run: |
+          git init -q out && cd out && mv ../ndk-arm64.tgz . 
+          git config user.name ci && git config user.email ci@users.noreply.github.com
+          git checkout -q -b ndk-blob && git add ndk-arm64.tgz && git commit -qm "NDK arm64 sysroot"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ndk-blob
