@@ -23,6 +23,7 @@ async def main():
         b = await p.chromium.launch(args=['--autoplay-policy=no-user-gesture-required', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
         ctx = await b.new_context(viewport={'width': 420, 'height': 860}, has_touch=True, is_mobile=True, device_scale_factor=2)
         pg = await ctx.new_page()
+        if os.environ.get('NATIVE_MOCK'): await pg.add_init_script(path=str(ROOT / 'test/native_mock.js'))
         errs = []
         pg.on('console', lambda m: errs.append(m.type + ': ' + m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
         pg.on('pageerror', lambda e: errs.append('PAGEERR ' + str(e)))
@@ -43,6 +44,11 @@ async def main():
         thr = await pg.evaluate('({t: __underover.core.threaded, iso: self.crossOriginIsolated})')
         print('core:', 'threaded' if thr['t'] else 'single-threaded', '(cross-origin isolated)' if thr['iso'] else '')
         if os.environ.get('EXPECT_MT'): check('threaded core running', thr['t'])
+        if os.environ.get('NATIVE_MOCK'):
+            nv = await pg.evaluate('({native: !!__underover.core.native, calls: __nativeCalls, hole: document.getElementById("stage").style.clipPath, on: document.documentElement.classList.contains("nv-on")})')
+            last = nv['calls']['setRect'][-1] if nv['calls']['setRect'] else None
+            check('native core path', nv['native'] and nv['calls']['frames'] > 30 and nv['calls']['present'] > 10 and nv['calls']['setShader'] >= 1, json.dumps({k: v for k, v in nv['calls'].items() if k != 'setRect'}))
+            check('video view placed over #screen and page holed', bool(last and last[4] and last[2] > 100 and nv['on'] and 'evenodd' in nv['hole']), str(last))
         await pg.screenshot(path='/tmp/underover-3-portrait.png')
 
         # A on the keyboard (X key) takes 7 health

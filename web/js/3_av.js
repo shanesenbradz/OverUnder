@@ -182,6 +182,19 @@ const SHADERS = {
     vec2 p = fract(uv * uTex); vec2 px = uTex / uOut; vec2 g = smoothstep(vec2(0.0), px, p) * smoothstep(vec2(0.0), px, 1.0 - p); c *= mix(0.8, 1.0, g.x * g.y);` },
 };
 
+/* the full fragment shader for a Look screen, shared by the WebGL renderer and the native GL view */
+function fragmentSource(name) {
+  const def = SHADERS[name] || SHADERS.sharp;
+  return `precision mediump float; varying vec2 uv; uniform sampler2D uCur, uPrev; uniform vec2 uTex, uOut; uniform float uBlend, uCC, uBright, uSat, uContrast;
+      vec3 raw(vec2 u){ vec3 a = texture2D(uCur, u).rgb; if (uBlend < 0.5) return a; vec3 b = texture2D(uPrev, u).rgb; return mix(a, b, 0.5); }
+      vec3 tex(vec2 u){ vec3 c = raw(u);
+        if (uCC > 0.5) { vec3 l = pow(c, vec3(2.2)); l = mat3(0.80,0.135,0.195, 0.275,0.64,0.155, -0.075,0.225,0.65) * l; c = pow(max(l * 0.94, 0.0), vec3(1.0/2.2)); }
+        return c; }
+      void main(){ ${def.body}
+        float lum = dot(c, vec3(0.299,0.587,0.114)); c = mix(vec3(lum), c, uSat); c = (c - 0.5) * uContrast + 0.5; c *= uBright;
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }`;
+}
+
 // Sharp and Smooth draw the picture at the game's own size (240x160) and let the phone's
 // compositor (the GPU) scale it up to the screen, with image-rendering choosing nearest or
 // bilinear. The colour work then runs on 38 thousand pixels a frame instead of up to two
@@ -207,14 +220,7 @@ class Renderer {
   _prog(name) {
     if (this.progs[name]) return this.progs[name];
     const gl = this.gl, def = SHADERS[name] || SHADERS.sharp;
-    const fs = `precision mediump float; varying vec2 uv; uniform sampler2D uCur, uPrev; uniform vec2 uTex, uOut; uniform float uBlend, uCC, uBright, uSat, uContrast;
-      vec3 raw(vec2 u){ vec3 a = texture2D(uCur, u).rgb; if (uBlend < 0.5) return a; vec3 b = texture2D(uPrev, u).rgb; return mix(a, b, 0.5); }
-      vec3 tex(vec2 u){ vec3 c = raw(u);
-        if (uCC > 0.5) { vec3 l = pow(c, vec3(2.2)); l = mat3(0.80,0.135,0.195, 0.275,0.64,0.155, -0.075,0.225,0.65) * l; c = pow(max(l * 0.94, 0.0), vec3(1.0/2.2)); }
-        return c; }
-      void main(){ ${def.body}
-        float lum = dot(c, vec3(0.299,0.587,0.114)); c = mix(vec3(lum), c, uSat); c = (c - 0.5) * uContrast + 0.5; c *= uBright;
-        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }`;
+    const fs = fragmentSource(name);
     const p = gl.createProgram(); gl.attachShader(p, this.vs); gl.attachShader(p, this._sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
     const u = n => gl.getUniformLocation(p, n);
     const o = { p, loc: gl.getAttribLocation(p, 'p'), cur: u('uCur'), prev: u('uPrev'), tex: u('uTex'), out: u('uOut'), blend: u('uBlend'), cc: u('uCC'), bright: u('uBright'), sat: u('uSat'), con: u('uContrast'), filter: def.filter };

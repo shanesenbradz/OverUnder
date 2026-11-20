@@ -461,3 +461,7 @@ textarea{width:100%;background:var(--raised);border:0;border-radius:10px;padding
 .upd-dot{width:10px;height:10px;border-radius:50%;background:var(--acc,#0a84ff);box-shadow:0 0 8px var(--acc,#0a84ff);flex:none}
 .upd-track{height:6px;border-radius:3px;background:var(--cell);overflow:hidden;margin:4px 0 2px}
 .upd-track i{display:block;height:100%;background:var(--acc,#0a84ff);transition:width .2s}
+
+/* native core: the game is drawn by the app under the page, so the page is see-through there */
+html.nv-on,html.nv-on body,html.nv-on #player{background:transparent!important}
+html.nv-on #screen{opacity:0}

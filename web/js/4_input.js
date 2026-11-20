@@ -37,7 +37,7 @@ const DEFAULTS = {
   // system
   autoResume: true, autoUpdate: true, autoSaveSec: 30, pauseOnMenu: true, pauseHidden: true, wakeLock: true, slot: 1,
   // performance: 'auto' or how many frames to skip drawing between drawn ones
-  frameskip: 0,
+  frameskip: 0, nativeCore: true, jit: true, fastmem: true,
 };
 // Lite: built for older, slower phones. Light defaults, and the heavy extras are off for good.
 const LITE_DEFAULTS = { frameskip: 'auto', rewind: false, rewindMB: 24, rewindEvery: 4, btnStyle: 'flat', press: 'none', shell: false, gloss: 'matte', saveLights: false, ffSpeed: 2 };
@@ -374,12 +374,12 @@ const Mic = {
       core.micPush(o);
     };
     src.connect(sp).connect(mute).connect(ctx.destination);
-    this.node = { src, sp, mute }; core.m._nds_mic_live(1);
+    this.node = { src, sp, mute }; core.micLive(true);
   },
   stop() {
     if (!this.stream) return;
     this.stream.getTracks().forEach(t => t.stop()); this.stream = null;
     try { this.node.src.disconnect(); this.node.sp.disconnect(); this.node.mute.disconnect(); } catch (e) {}
-    this.node = null; if (core?.m) core.m._nds_mic_live(0);
+    this.node = null; if (core?.loaded !== undefined) core.micLive(false);
   },
 };

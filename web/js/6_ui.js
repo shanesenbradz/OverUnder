@@ -31,6 +31,7 @@ function showView(v) {
   $('#library').classList.toggle('hidden', v !== 'library');
   $('#player').classList.toggle('hidden', v !== 'player');
   if (v === 'player') history.pushState({ p: 1 }, '');
+  renderer?.sync?.();
 }
 addEventListener('popstate', () => {
   if (!Emu.active) return;
@@ -128,7 +129,7 @@ const Library = {
     if (k === 'erom') { const r = await DB.get('roms', m.id); download(m.file || safeName(m.name) + '.nds', r); }
     if (k === 'info') dialog({ wide: true, title: m.name, body: `<div class="note">System: <b>${m.system.toUpperCase()}</b><br>Header title: <b>${m.title || '-'}</b> ${m.code ? `(${m.code})` : ''}<br>${m.banner ? `Banner: <b>${m.banner}</b><br>` : ''}CRC32: <b>${m.crc}</b><br>Size: <b>${fmtBytes(m.size)}</b><br>Play time: <b>${fmtTime(m.playSec)}</b><br>Added: <b>${new Date(m.added).toLocaleString()}</b></div>` });
     if (k === 'del' && await confirmD('Delete ' + m.name + '?', 'This removes the ROM, its save data, save states and cheats from this phone.', 'Delete', true)) {
-      await DB.del('roms', m.id); await DB.del('meta', m.id); await DB.del('saves', m.id); await DB.del('cheats', m.id); await DB.delPrefix('states', m.id + ':');
+      await DB.del('roms', m.id); core.forgetRom?.(m.id); await DB.del('meta', m.id); await DB.del('saves', m.id); await DB.del('cheats', m.id); await DB.delPrefix('states', m.id + ':');
       this.render();
     }
   },
@@ -580,8 +581,11 @@ const Panels = {
     b.append(sec('Performance',
       row('Frame skip', 'Leaves out some pictures when the phone falls behind. The game and sound keep full speed.', sel('frameskip', [['auto', 'Auto'], [0, 'Off'], [1, '1 of 2'], [2, '2 of 3'], [3, '3 of 4']], () => { Emu.skip = 0; Emu.hud(); })),
       row('Show FPS', null, sw('showFps', () => Emu.hud())),
-      core.threaded ? row('3D on its own core', 'The 3D scene is drawn on a second CPU core while the game runs on the first', swRaw(!!core.m._nds_is_threaded(), v => core.m._nds_set_threaded(v ? 1 : 0))) : null,
-      h('div', { class: 'note', style: { marginTop: '8px' } }, core.threaded ? 'Running the threaded core.' : 'Running the single-threaded core. The installed app and the website (after its first visit) use the threaded one, which draws 3D on a second core.'),
+      core.threaded ? row('3D on its own core', 'The 3D scene is drawn on a second CPU core while the game runs on the first', swRaw(core.isThreaded(), v => core.setThreaded(v))) : null,
+      core.native ? row('JIT recompiler', 'Turns the game\'s ARM code into native code as it runs. Much faster. Takes effect next time a game starts.', sw('jit', () => Sheet.render())) : null,
+      core.native && S.jit ? row('Fast memory', 'Maps the DS memory straight onto the phone\'s. Faster with the JIT. Takes effect next time a game starts.', sw('fastmem')) : null,
+      NATIVE ? row('Native core', 'melonDS built for this phone. Off runs the WebAssembly core instead. Restarts the app page.', swRaw(core.native, v => { S.nativeCore = v; saveSettings(); location.reload(); })) : null,
+      h('div', { class: 'note', style: { marginTop: '8px' } }, core.native ? (Emu.active ? (core.jit ? 'Running the native core with the JIT.' : 'Running the native core without the JIT.') : 'Running the native core (melonDS with the ARM64 JIT).') : core.threaded ? 'Running the threaded WebAssembly core.' : 'Running the single-threaded core. The installed app and the website (after its first visit) use the threaded one, which draws 3D on a second core.'),
       ms ? h('div', { class: 'note', style: { marginTop: '8px' } }, ms) : null,
       LITE ? h('div', { class: 'note', style: { marginTop: '8px' } }, 'For the fastest picture use the Sharp or Smooth screen, with color correction and frame blending off. The phone\'s graphics chip then does the scaling.') : null,
     ));
@@ -771,9 +775,15 @@ function initEditBar() {
     applyLook();
     await DB.open();
     await loadWallpaper();
-    core = new Core(); await core.init();
+    // arm64 phones in the Android app get melonDS with the JIT; everything else the WebAssembly core
+    const fellBack = NATIVE ? nativeCrashFallback() : null;
+    if (fellBack) setTimeout(() => toast(fellBack, 6000), 800);
+    if (NATIVE && S.nativeCore !== false) {
+      try { core = new NativeCore(); await core.init(); } catch (e) { console.warn('native core did not start', e); core = null; }
+    }
+    if (!core) { core = new Core(); await core.init(); }
     Audio_ = new AudioOut(); await Audio_.init(); Audio_.apply(S);
-    renderer = new Renderer($('#screen'));
+    renderer = core.native ? new NativeRenderer($('#screen')) : new Renderer($('#screen'));
     Input.init(); Touch.init(); Stylus.init(); Sheet.init(); initEditBar(); Library.init();
     $('#boot').remove();
     window.__underover = window.__calzone = { core, Emu, S, DB, Audio_, Input };

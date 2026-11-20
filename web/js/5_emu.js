@@ -14,7 +14,10 @@ const Emu = {
     core.setAudio(Audio_.ctx.sampleRate, S.interp, S.bitDepth);
     core.setUser({ name: S.nick, lang: S.lang, color: S.favColor, month: S.bMonth, day: S.bDay });
     const sram = await DB.get('saves', meta.id);
-    if (!core.load(rom, sram)) { toast('That file did not boot. Is it a DS game?'); return; }
+    // the native core copies a ROM over once, then keeps it: say so for big games the first time
+    let shown = false;
+    const ok = await core.load(rom, sram, meta.id, () => { if (!shown && rom.length > (16 << 20)) { shown = true; toast('Copying the game over for the JIT core. Only the first time.', 2600); } });
+    if (!ok) { toast('That file did not boot. Is it a DS game?'); return; }
     this.applyView();
     this.game = meta; this.active = true; this.frameNo = 0; this.ffToggle = false; this.undoLoad = this.undoSave = null;
     this.rom = rom;

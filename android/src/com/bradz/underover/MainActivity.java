@@ -50,6 +50,7 @@ public class MainActivity extends Activity {
     private static final int REQ_MIC = 43;
     private PermissionRequest micRequest;
     private WebView web;
+    private VideoView video;
     private ValueCallback<Uri[]> fileCallback;
     private int padKeys, padAxes, padSent = -1;
     private Updater updater;
@@ -70,7 +71,20 @@ public class MainActivity extends Activity {
         web.setBackgroundColor(Color.rgb(17, 17, 19));
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
-        setContentView(web);
+        // With the native core (arm64 phones) the game picture is drawn by a GL view under the
+        // WebView, so the page is see-through where its #screen element sits.
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(17, 17, 19));
+        if (NativeCore.OK) {
+            root.setBackgroundColor(Color.BLACK); // shows round the game picture, like #player's black
+            video = new VideoView(this);
+            android.widget.FrameLayout.LayoutParams vlp = new android.widget.FrameLayout.LayoutParams(1, 1, android.view.Gravity.TOP | android.view.Gravity.START);
+            video.setVisibility(View.INVISIBLE);
+            root.addView(video, vlp);
+            web.setBackgroundColor(Color.TRANSPARENT);
+        }
+        root.addView(web, new android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+        setContentView(root);
         immersive();
 
         WebSettings s = web.getSettings();
@@ -97,6 +111,7 @@ public class MainActivity extends Activity {
         if (getPackageName().endsWith(".lite")) prefer60Hz();
 
         web.addJavascriptInterface(new Bridge(this), "CalzoneAndroid");
+        if (video != null) web.addJavascriptInterface(new CoreBridge(this, video), "UnderoverNative");
         updater = new Updater(this);
         web.addJavascriptInterface(updater, "BullpupUpdate");
 
@@ -407,6 +422,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (updater != null) updater.close();
+        if (video != null) video.shutdown();
         if (web != null) { web.destroy(); web = null; }
         super.onDestroy();
     }

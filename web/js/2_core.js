@@ -88,6 +88,9 @@ class Core {
   setLid(closed) { this.m._nds_set_lid(closed ? 1 : 0); }
   get lidClosed() { return !!this.m._nds_lid(); }
   micBlow(on) { this.m._nds_mic_blow(on ? 1 : 0); }
+  micLive(on) { this.m._nds_mic_live(on ? 1 : 0); }
+  isThreaded() { return !!this.m._nds_is_threaded(); }
+  setThreaded(on) { this.m._nds_set_threaded(on ? 1 : 0); }
   micPush(s16) { const n = Math.min(s16.length, 8192); this.H16.set(s16.subarray(0, n), this.micPtr >> 1); this.m._nds_mic_push(this.micPtr, n); }
   get topIsMain() { return !!this.m._nds_top_is_main(); }
   setView(v) { Object.assign(this.view, v); this._frame = null; }
@@ -148,12 +151,19 @@ class Core {
    (a DS state is about 6 MB, too much to diff in JS every few frames)
    ============================================================ */
 class Rewinder {
-  constructor(core, budgetMB) { this.core = core; this.m = core.m; this.m._nds_rewind_reset(budgetMB); }
-  reset() { this.m._nds_rewind_reset(0); }
-  get count() { return this.m._nds_rewind_count(); }
-  get bytes() { return this.m._nds_rewind_bytes(); }
-  capture() { this.m._nds_rewind_capture(); }
-  step() { const ok = !!this.m._nds_rewind_step(); this.core._frame = null; return ok; }
+  constructor(core, budgetMB) {
+    this.core = core;
+    // the native core keeps the deltas in the app; the wasm one in its heap. Same calls either way.
+    const n = core.native ? core.n : null, m = core.m;
+    this.f = n ? { reset: b => n.rewindReset(b), count: () => n.rewindCount(), bytes: () => n.rewindBytes(), capture: () => n.rewindCapture(), step: () => n.rewindStep() }
+      : { reset: b => m._nds_rewind_reset(b), count: () => m._nds_rewind_count(), bytes: () => m._nds_rewind_bytes(), capture: () => m._nds_rewind_capture(), step: () => m._nds_rewind_step() };
+    this.f.reset(budgetMB);
+  }
+  reset() { this.f.reset(0); }
+  get count() { return this.f.count(); }
+  get bytes() { return this.f.bytes(); }
+  capture() { this.f.capture(); }
+  step() { const ok = !!this.f.step(); this.core._frame = null; return ok; }
 }
 
 /* ============================================================
@@ -185,14 +195,23 @@ function parseCheat(code) {
 class RamSearch {
   constructor(core) { this.core = core; this.reset(16); }
   reset(bits) { this.bits = bits; this.addrs = null; this.prev = null; this.history = 0; }
-  read(a) { return this.bits === 8 ? this.core.r8(a) : this.bits === 16 ? this.core.r16(a) : this.core.r32(a); }
+  read(a) {
+    const M = this.mem;
+    if (M) { const i = a & 0x3FFFFF; return this.bits === 8 ? M[i] : this.bits === 16 ? M[i] | M[(i + 1) & 0x3FFFFF] << 8 : (M[i] | M[(i + 1) & 0x3FFFFF] << 8 | M[(i + 2) & 0x3FFFFF] << 16 | M[(i + 3) & 0x3FFFFF] << 24) >>> 0; }
+    return this.bits === 8 ? this.core.r8(a) : this.bits === 16 ? this.core.r16(a) : this.core.r32(a);
+  }
+  // the native core hands over all of main RAM at once for a pass over every address
+  snap() { this.mem = this.core.ramSnapshot ? this.core.ramSnapshot() : null; }
   start() {
+    const own = !this.mem; if (own) this.snap();
     const step = this.bits / 8, n = 0x400000 / step;
     this.addrs = new Uint32Array(n); this.prev = new Float64Array(n);
     for (let i = 0; i < n; i++) { const a = 0x02000000 + i * step; this.addrs[i] = a; this.prev[i] = this.read(a); }
     this.history = 1;
+    if (own) this.mem = null;
   }
   filter(mode, x) {
+    this.snap();
     if (!this.addrs) this.start();
     const A = this.addrs, P = this.prev, keepA = new Uint32Array(A.length), keepP = new Float64Array(A.length);
     let k = 0;
@@ -208,6 +227,7 @@ class RamSearch {
       if (ok) { keepA[k] = A[i]; keepP[k++] = v; }
     }
     this.addrs = keepA.slice(0, k); this.prev = keepP.slice(0, k); this.history++;
+    this.mem = null;
     return k;
   }
   get count() { return this.addrs ? this.addrs.length : 0; }
@@ -215,7 +235,7 @@ class RamSearch {
 
 /* Save states are big (about 6 MB, mostly RAM), so they are stored gzipped. */
 async function packState(u8) {
-  if (typeof CompressionStream === 'undefined') return u8;
+  if (typeof CompressionStream === 'undefined' || (u8[0] === 0x1F && u8[1] === 0x8B)) return u8; // the native core gzips its own
   const s = new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'));
   return new Uint8Array(await new Response(s).arrayBuffer());
 }

@@ -1,6 +1,6 @@
 // Offline support for the GitHub Pages build. Serves the cached app straight away and
 // refreshes the cache in the background, so a new version shows up on the next launch.
-const CACHE = 'underover-1.1.2';
+const CACHE = 'underover-1.2';
 const mine = k => k.startsWith('underover-');
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'pwa/icon-192.png', 'pwa/icon-512.png', 'pwa/icon-maskable-512.png', 'pwa/apple-touch-icon.png'];
 

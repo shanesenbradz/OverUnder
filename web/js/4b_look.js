@@ -98,8 +98,9 @@ function feedback() {
 /* ---- ambient glow from the game picture ---- */
 let _ambLast = '';
 function sampleAmbient() {
-  const { data } = core.video(); let r = 0, g = 0, b = 0, n = 0;
-  for (let i = 0; i < data.length; i += 4 * 31) { r += data[i]; g += data[i + 1]; b += data[i + 2]; n++; }
+  let r = 0, g = 0, b = 0, n = 0;
+  if (core.native) { [r, g, b] = core.avgColor(); n = 1; }
+  else { const { data } = core.video(); for (let i = 0; i < data.length; i += 4 * 31) { r += data[i]; g += data[i + 1]; b += data[i + 2]; n++; } }
   if (!n) return;
   r /= n; g /= n; b /= n;
   const m = (r + g + b) / 3, k = 1.7; r = m + (r - m) * k; g = m + (g - m) * k; b = m + (b - m) * k;

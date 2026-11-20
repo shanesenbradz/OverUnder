@@ -1,12 +1,13 @@
 #!/bin/bash
-# Builds dist/Brads_Underover.apk (package com.bradz.underover) from dist/Brads_Underover.html without Android Studio.
+# Builds dist/Brads_Underover.apk (package com.bradz.underover) from dist/Brads_Underover.html and the
+# native core in native/ (tools/build_native.sh) without Android Studio.
 # Needs: Java 17+, Node/npm (to fetch the toolchain), Python 3, zip.
 # Signing: set KEYSTORE, KS_PASS and KS_ALIAS to use your own key. Without them a new key
 # is made in keys/ (git-ignored). Updates only install over a build signed with the same key.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 TC=.toolchain; B=build
-VC=${VC:-4}; VN=${VN:-1.1.2}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
+VC=${VC:-5}; VN=${VN:-1.2}; NAME=Brads_Underover; MANIFEST=android/AndroidManifest.xml
 TARGET=${TARGET:-36}
 if [ ! -d $TC/minapk ]; then
   mkdir -p $TC && (cd $TC && npm pack @drxiaozhi/minapk@0.5.1 aaptjs3@2.0.2 >/dev/null)
@@ -26,6 +27,9 @@ mkdir -p $B/res && cp -r android/res/. $B/res/
 java -jar $T/ecj-3.45.0.jar -8 -nowarn -cp $AJ -d $B/classes $(find android/src $B/gen -name '*.java')
 java -cp $T/d8.jar com.android.tools.r8.D8 --release --min-api 24 --lib $AJ --output $B/dex $(find $B/classes -name '*.class')
 cp $B/base.apk $B/unaligned.apk && (cd $B/dex && zip -q -X ../unaligned.apk classes.dex)
+# the native core (melonDS with the ARM64 JIT, from tools/build_native.sh) plus empty stand-ins for other ABIs
+mkdir -p $B/native/lib && cp -r native/arm64-v8a native/armeabi-v7a native/x86 native/x86_64 $B/native/lib/
+(cd $B/native && zip -q -X -r ../unaligned.apk lib)
 python3 -m pip show repro-apk >/dev/null 2>&1 || python3 -m pip install -q repro-apk
 # alignment padding as a proper ZIP extra field (0xD935, what the Android Gradle plugin writes),
 # not loose zero bytes, so strict ZIP parsers on newer phones accept every entry
