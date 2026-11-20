@@ -54,6 +54,24 @@ int main(int argc, char** argv)
     wh = uo_compose(0, 0, 0); uo_copy_composed(pic.data(), (uint32_t)pic.size());
     if (argc > 5) { FILE* f = fopen(argv[5], "wb"); fwrite(pic.data(), 4, (wh >> 16) * (wh & 0xFFFF), f); fclose(f); }
     vars(v); printf("end vars %u %u %u %u %u crc %08x\n", v[0], v[1], v[2], v[3], v[4], crc((uint8_t*)pic.data(), (wh >> 16) * (wh & 0xFFFF) * 4));
+    // frame skip with the threaded 3D renderer: from the same state, two frames run without
+    // drawing and then one drawn must give the same picture as three drawn frames.
+    int bad = 0;
+    std::vector<uint32_t> A(256 * 192), Bp(256 * 192);
+    for (int k = 0; k < 12; k++)
+    {
+        uint32_t sl = uo_state_save(); std::vector<uint8_t> s0(uo_state_ptr(), uo_state_ptr() + sl);
+        uo_frame(0, 0, 1); uo_frame(0, 0, 1); uo_frame(0, 1, 1);
+        uo_compose(2, 0, 0); uo_copy_composed(A.data(), (uint32_t)A.size());
+        uo_state_load(s0.data(), sl);
+        uo_frame(0, 1, 1); uo_frame(0, 1, 1); uo_frame(0, 1, 1);
+        uo_compose(2, 0, 0); uo_copy_composed(Bp.data(), (uint32_t)Bp.size());
+        int rows = 0;
+        for (int y = 0; y < 192; y++) if (memcmp(&A[y * 256], &Bp[y * 256], 1024)) rows++;
+        if (rows) { bad++; printf("  try %d: %d rows differ\n", k, rows); }
+        uo_frame(0, 1, 1);
+    }
+    printf("frame skip with threaded 3D: %d of 12 differ\n", bad);
     uo_unload();
     return 0;
 }

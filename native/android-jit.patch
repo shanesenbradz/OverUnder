@@ -1,8 +1,11 @@
-diff --git a/src/ARMJIT_Global.cpp b/src/ARMJIT_Global.cpp
-index 44766a7..5b13391 100644
+Underover native build fixes on top of vendor/melonds/bullpup.patch:
+- JIT code memory comes from an anonymous mapping on Android, not the library bss
+- a line skipped by frame skip still takes its line from the threaded 3D renderer, so the
+  next shown frame never reads 3D lines before they are drawn (black bands at the bottom)
+
 --- a/src/ARMJIT_Global.cpp
 +++ b/src/ARMJIT_Global.cpp
-@@ -21,7 +21,7 @@ namespace ARMJIT_Global
+@@ -21,7 +21,7 @@
  
  std::mutex globalMutex;
  
@@ -11,7 +14,7 @@ index 44766a7..5b13391 100644
  static constexpr size_t NumCodeMemSlices = 4;
  static constexpr size_t CodeMemoryAlignedSize = NumCodeMemSlices * CodeMemorySliceSize;
  
-@@ -42,7 +42,7 @@ void* AllocateCodeMem()
+@@ -42,7 +42,7 @@
  {
      std::lock_guard guard(globalMutex);
  
@@ -20,7 +23,7 @@ index 44766a7..5b13391 100644
      if (AvailableCodeMemSlices)
      {
          int slice = __builtin_ctz(AvailableCodeMemSlices);
-@@ -69,7 +69,7 @@ void FreeCodeMem(void* codeMem)
+@@ -69,7 +69,7 @@
  {
      std::lock_guard guard(globalMutex);
  
@@ -29,7 +32,7 @@ index 44766a7..5b13391 100644
      for (int i = 0; i < NumCodeMemSlices; i++)
      {
          if (codeMem == &GetAlignedCodeMemoryStart()[CodeMemorySliceSize * i])
-@@ -98,8 +98,8 @@ void Init()
+@@ -98,8 +98,8 @@
          #ifdef _WIN32
              DWORD dummy;
              VirtualProtect(GetAlignedCodeMemoryStart(), CodeMemoryAlignedSize, PAGE_EXECUTE_READWRITE, &dummy);
@@ -40,3 +43,26 @@ index 44766a7..5b13391 100644
          #else
              mprotect(GetAlignedCodeMemoryStart(), CodeMemoryAlignedSize, PROT_EXEC | PROT_READ | PROT_WRITE);
          #endif
+--- a/src/GPU.h
++++ b/src/GPU.h
+@@ -851,6 +851,9 @@
+     virtual void DrawSprites(u32 line) = 0;
+ 
+     virtual void Start3DRendering() { Rend3D->RenderFrame(); }
++    // Underover: a line whose 2D drawing is skipped still takes its 3D line, so the threaded
++    // 3D renderer's line count stays in step (otherwise the next shown frame reads lines early)
++    void Skip3DLine(u32 line) { if (Rend3D && line < 192) Rend3D->GetLine(line); }
+     virtual void Finish3DRendering() { Rend3D->FinishRendering(); }
+     virtual void Restart3DRendering() { Rend3D->RestartFrame(); }
+ 
+--- a/src/GPU.cpp
++++ b/src/GPU.cpp
+@@ -1160,6 +1160,8 @@
+             Rend->DrawScanline(line);
+         if (line < 191 && !skip)
+             Rend->DrawSprites(line+1);
++        if (skip)
++            Rend->Skip3DLine(VCount);
+ 
+         NDS.CheckDMAs(0, 0x02);
+     }

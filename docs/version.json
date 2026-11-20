@@ -1,15 +1,15 @@
 {
   "full": {
-    "version": "1.1.2",
-    "code": 4,
-    "apk": "https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/release/Brads_Underover_1.1.2.apk",
+    "version": "1.3",
+    "code": 6,
+    "apk": "https://raw.githubusercontent.com/shanesenbradz/OverUnder/main/release/Brads_Underover_1.3.apk",
     "page": "https://shanesenbradz.github.io/OverUnder/download/",
-    "size": 1353011,
-    "sha256": "c8532ca5fda3afd4e819efd59ea9ee647ae8ddc7012666f31863afcea0c96560",
+    "size": 2139736,
+    "sha256": "c5a1a2b033ce821cfc003f8078272f77ec184635ba0cc60efcc2e00552cd6f6c",
     "notes": [
-      "Installs on Android 15 Samsung phones: the app's code now lives in its own package and it's signed like Bullpup",
-      "One screen by default, like Bullpup, with SWAP for the touch screen. Both screens are still in Look, Screens",
-      "Smoother frame pacing and 3D on a second CPU core"
+      "Runs melonDS natively with the ARM64 JIT on 64-bit phones (from 1.2)",
+      "Fixed the black bands and flicker at the bottom of the screen when a frame was skipped",
+      "New default button layout"
     ]
   }
 }

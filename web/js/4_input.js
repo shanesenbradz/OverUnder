@@ -155,12 +155,13 @@ const CTL_DEFS = {
 // and the same layout fits stacked screens (tall) and one screen (short).
 // Landscape: the screens stand in the middle and the controls go either side, like a DS on its side.
 const LAYOUT_DEFAULT = {
+  // Brad's own layout (1.3): SAVE up top, SWAP between L and MENU, the face buttons in a diamond
   portrait: {
-    dpad: { x: 21, y: 60, s: 33 }, a: { x: 91, y: 60, s: 14 }, b: { x: 80, y: 80, s: 14 }, x: { x: 80, y: 40, s: 14 }, y: { x: 69, y: 60, s: 14 },
+    dpad: { x: 22.2, y: 55.4, s: 47 }, a: { x: 87.8, y: 51.2, s: 14 }, b: { x: 71.4, y: 63, s: 14 }, x: { x: 72.4, y: 38.7, s: 14 }, y: { x: 58.2, y: 51.9, s: 14 },
     ab: { x: 93, y: 84, s: 10, v: false },
-    l: { x: 12, y: 24, s: 20 }, r: { x: 88, y: 24, s: 20 }, select: { x: 38, y: 93, s: 16 }, start: { x: 62, y: 93, s: 16 },
-    rw: { x: 34, y: 24, s: 11 }, menu: { x: 50, y: 24, s: 11 }, ff: { x: 66, y: 24, s: 11 }, swap: { x: 47, y: 62, s: 11 }, mic: { x: 47, y: 44, s: 10, v: false },
-    qs: { x: 9, y: 93, s: 12, v: false }, ql: { x: 91, y: 93, s: 12, v: false }, ta: { x: 60, y: 42, s: 9, v: false }, tb: { x: 60, y: 80, s: 9, v: false },
+    l: { x: 12.5, y: 19, s: 20 }, r: { x: 89.1, y: 18.5, s: 20 }, select: { x: 37.8, y: 88.5, s: 16 }, start: { x: 63.1, y: 88.7, s: 16 },
+    rw: { x: 25.1, y: 81.9, s: 11, v: false }, menu: { x: 51.3, y: 18.8, s: 11 }, ff: { x: 68.1, y: 19, s: 11 }, swap: { x: 34.2, y: 19.4, s: 11 }, mic: { x: 47, y: 44, s: 10, v: false },
+    qs: { x: 50.9, y: 7, s: 7 }, ql: { x: 91, y: 93, s: 12, v: false }, ta: { x: 60, y: 42, s: 9, v: false }, tb: { x: 60, y: 80, s: 9, v: false },
   },
   landscape: {
     dpad: { x: 12, y: 60, s: 34 }, a: { x: 95, y: 56, s: 14 }, b: { x: 87, y: 72, s: 14 }, x: { x: 87, y: 40, s: 14 }, y: { x: 79, y: 56, s: 14 },
