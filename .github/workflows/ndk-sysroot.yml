@@ -1,0 +1,32 @@
+name: ndk-sysroot
+on:
+  push:
+    branches: [ndk-toolchain]
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pack the NDK r27 sysroot for arm64
+        run: |
+          ls /usr/local/lib/android/sdk/ndk/
+          NDK=$(ls -d /usr/local/lib/android/sdk/ndk/27.* | tail -1)
+          [ -n "$NDK" ] || NDK=$ANDROID_NDK_LATEST_HOME
+          echo "using $NDK"
+          TC=$NDK/toolchains/llvm/prebuilt/linux-x86_64
+          OUT=$PWD/ndk-arm64; mkdir -p $OUT/sysroot/usr/lib $OUT/clang
+          cp $NDK/source.properties $OUT/
+          cp -r $TC/sysroot/usr/include $OUT/sysroot/usr/
+          mkdir -p $OUT/sysroot/usr/lib/aarch64-linux-android
+          cp $TC/sysroot/usr/lib/aarch64-linux-android/*.a $OUT/sysroot/usr/lib/aarch64-linux-android/ || true
+          cp -r $TC/sysroot/usr/lib/aarch64-linux-android/24 $OUT/sysroot/usr/lib/aarch64-linux-android/
+          cp -r $TC/lib/clang $OUT/clang/
+          find $OUT/clang -type f \( -name '*.a' -o -name '*.so' \) ! -name '*aarch64*' ! -path '*aarch64*' -delete
+          # drop the other architectures' headers
+          for a in arm-linux-androideabi i686-linux-android x86_64-linux-android riscv64-linux-android; do rm -rf $OUT/sysroot/usr/include/$a; done
+          $TC/bin/clang --version > $OUT/clang-version.txt
+          tar czf ndk-arm64.tgz ndk-arm64 && ls -l ndk-arm64.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ndk-arm64
+          path: ndk-arm64.tgz
+          retention-days: 3
